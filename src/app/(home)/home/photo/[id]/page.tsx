@@ -36,6 +36,15 @@ export default function PhotoPage() {
   
   const { updatePhoto, deletePhoto, isLoading: isActionLoading } = usePhotos();
   
+  // Enable edit mode from URL parameter
+  useEffect(() => {
+    // Check if the URL contains /edit at the end
+    const isEditMode = params.edit === 'edit';
+    if (isEditMode && isOwner) {
+      setIsEditing(true);
+    }
+  }, [params, isOwner]);
+  
   // Update loading state when data is loaded
   useEffect(() => {
     if (photo !== undefined) {
@@ -71,6 +80,8 @@ export default function PhotoPage() {
   const handleSaveTitle = async (newTitle: string, newDescription?: string, newTags?: string[]) => {
     if (!photo || !isOwner) return;
     
+    console.log('Saving photo with:', { newTitle, newDescription, newTags });
+    
     const success = await updatePhoto({
       photoId: photo._id,
       title: newTitle,
@@ -78,8 +89,15 @@ export default function PhotoPage() {
       tags: newTags,
     });
     
+    console.log('Save result:', success);
+    
     if (success) {
       setIsEditing(false);
+      
+      // If we were in edit mode from URL, navigate back to the normal view
+      if (params.edit === 'edit') {
+        router.push(`/home/photo/${photoId}`);
+      }
     } else {
       alert('Failed to update photo');
     }
@@ -87,6 +105,11 @@ export default function PhotoPage() {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
+    
+    // If we were in edit mode from URL, navigate back to the normal view
+    if (params.edit === 'edit') {
+      router.push(`/home/photo/${photoId}`);
+    }
   };
   
   const handleDeletePhoto = async () => {

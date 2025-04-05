@@ -1,5 +1,4 @@
-// components/photo/PhotoEditor.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Save, X, Tag } from 'lucide-react';
 
 interface PhotoEditorProps {
@@ -23,8 +22,16 @@ const PhotoEditor = ({
   const [description, setDescription] = useState(initialDescription);
   const [tagsInput, setTagsInput] = useState(initialTags.join(', '));
 
+  // Update local state if props change
+  useEffect(() => {
+    setTitle(initialTitle);
+    setDescription(initialDescription);
+    setTagsInput(initialTags.join(', '));
+  }, [initialTitle, initialDescription, initialTags]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Photo editor form submitted');
     
     // Trim and validate title
     const trimmedTitle = title.trim();
@@ -39,6 +46,12 @@ const PhotoEditor = ({
           .map(tag => tag.trim())
           .filter(tag => tag.length > 0)
       : [];
+    
+    console.log('Submitting photo data:', {
+      title: trimmedTitle,
+      description: description.trim() || undefined,
+      tags: tags.length > 0 ? tags : undefined
+    });
     
     onSave(
       trimmedTitle, 
@@ -68,6 +81,7 @@ const PhotoEditor = ({
               className="w-full px-3 py-2 rounded-lg bg-photo-primary border border-photo-secondary/20 text-photo-secondary focus:border-photo-indigo focus:outline-none focus:ring-1 focus:ring-photo-indigo"
               placeholder="Enter photo title"
               disabled={isLoading}
+              required
             />
           </div>
           

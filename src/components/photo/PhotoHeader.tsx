@@ -1,4 +1,3 @@
-// components/photo/PhotoHeader.tsx
 import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Pencil, Image, BookOpen, Trash2 } from 'lucide-react';
@@ -29,9 +28,9 @@ interface PhotoHeaderProps {
   photo: PhotoProps;
   album: AlbumProps;
   isOwner: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-  isEditing: boolean;
+  onEdit?: () => void;  // Function to enable edit mode
+  onDelete?: () => void;
+  isEditing?: boolean;
 }
 
 const PhotoHeader = ({ photo, album, isOwner, onEdit, onDelete, isEditing }: PhotoHeaderProps) => {
@@ -55,21 +54,25 @@ const PhotoHeader = ({ photo, album, isOwner, onEdit, onDelete, isEditing }: Pho
         
         {isOwner && !isEditing && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={onEdit}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-photo-secondary/5 hover:bg-photo-secondary/10 text-photo-secondary/80 hover:text-photo-secondary transition-colors"
-            >
-              <Pencil className="h-4 w-4" />
-              <span>Edit</span>
-            </button>
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-photo-secondary/5 hover:bg-photo-secondary/10 text-photo-secondary/80 hover:text-photo-secondary transition-colors"
+              >
+                <Pencil className="h-4 w-4" />
+                <span>Edit</span>
+              </button>
+            )}
             
-            <button
-              onClick={onDelete}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span>Delete</span>
-            </button>
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Delete</span>
+              </button>
+            )}
           </div>
         )}
       </div>
