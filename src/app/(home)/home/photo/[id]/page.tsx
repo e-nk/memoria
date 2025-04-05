@@ -3,116 +3,108 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuth } from '@/context/AuthContext';
+import { usePhotos } from '@/hooks/usePhotos';
 import Container from '@/components/layouts/Container';
 import PhotoHeader from '@/components/photo/PhotoHeader';
 import PhotoEditor from '@/components/photo/PhotoEditor';
 
-interface AlbumProps {
-  id: number;
-  title: string;
-  userId: number;
-}
-
-interface PhotoProps {
-  id: number;
-  albumId: number;
-  title: string;
-  url: string;
-  thumbnailUrl: string;
-  album?: AlbumProps;
-}
-
 export default function PhotoPage() {
   const params = useParams();
   const router = useRouter();
-  const photoId = Number(params.id);
+  const photoId = params.id as string;
+  const { userId } = useAuth();
   
-  const [photo, setPhoto] = useState<PhotoProps | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
 
+  // Fetch photo data using ID string
+  const photo = useQuery(api.photos.getPhotoById, { photoId });
+  
+  // Album depends on photo, use "skip" pattern to maintain hook order
+  const albumId = photo?.albumId;
+  const album = useQuery(
+    api.albums.getAlbumById, 
+    albumId ? { albumId } : "skip"
+  );
+  
+  // Determine if the current user is the photo owner
+  const isOwner = photo && userId ? photo.userId === userId : false;
+  
+  const { updatePhoto, deletePhoto, isLoading: isActionLoading } = usePhotos();
+  
+  // Update loading state when data is loaded
   useEffect(() => {
-    const fetchPhotoData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch photo
-        const photoResponse = await fetch(`https://jsonplaceholder.typicode.com/photos/${photoId}`);
-        if (!photoResponse.ok) {
-          throw new Error('Photo not found');
+    if (photo !== undefined) {
+      if (photo && albumId) {
+        // If we have a photo, check if album data is loaded
+        if (album !== undefined) {
+          setLoading(false);
         }
-        const photoData = await photoResponse.json();
-        
-        // Fetch album info for this photo
-        const albumResponse = await fetch(`https://jsonplaceholder.typicode.com/albums/${photoData.albumId}`);
-        const albumData = await albumResponse.json();
-        
-        setPhoto({
-          ...photoData,
-          album: {
-            id: albumData.id,
-            title: albumData.title,
-            userId: albumData.userId
-          }
-        });
-        setError('');
-      } catch (error) {
-        console.error('Error fetching photo data:', error);
-        setError('Failed to load photo data. Please try again later.');
-      } finally {
+      } else {
+        // If no photo, we don't need album data
         setLoading(false);
       }
-    };
-
-    if (photoId) {
-      fetchPhotoData();
     }
-  }, [photoId]);
+  }, [photo, album, albumId]);
+
+  // Handle errors
+  useEffect(() => {
+    if (!loading) {
+      if (!photo) {
+        setError('Photo not found');
+      } else if (!album) {
+        setError('Album not found');
+      } else if (!album.isPublic && !isOwner) {
+        setError('This photo is in a private album');
+      }
+    }
+  }, [loading, photo, album, isOwner]);
 
   const handleEditTitle = () => {
     setIsEditing(true);
   };
 
-  const handleSaveTitle = async (newTitle: string) => {
-    if (!photo) return;
+  const handleSaveTitle = async (newTitle: string, newDescription?: string, newTags?: string[]) => {
+    if (!photo || !isOwner) return;
     
-    try {
-      setLoading(true);
-      
-      // Send PATCH request to update the photo title
-      const response = await fetch(`https://jsonplaceholder.typicode.com/photos/${photoId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ title: newTitle }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to update photo title');
-      }
-      
-      // Update the photo in state
-      setPhoto({
-        ...photo,
-        title: newTitle
-      });
-      
+    const success = await updatePhoto({
+      photoId: photo._id,
+      title: newTitle,
+      description: newDescription,
+      tags: newTags,
+    });
+    
+    if (success) {
       setIsEditing(false);
-    } catch (error) {
-      console.error('Error updating photo title:', error);
-      alert('Failed to update the photo title. Please try again.');
-    } finally {
-      setLoading(false);
+    } else {
+      alert('Failed to update photo');
     }
   };
 
   const handleCancelEdit = () => {
     setIsEditing(false);
   };
+  
+  const handleDeletePhoto = async () => {
+    if (!photo || !isOwner) return;
+    
+    if (confirm('Are you sure you want to delete this photo? This action cannot be undone.')) {
+      const success = await deletePhoto(photo._id);
+      
+      if (success) {
+        // Navigate back to the album
+        router.push(`/home/album/${photo.albumId}`);
+      } else {
+        alert('Failed to delete photo');
+      }
+    }
+  };
 
-  if (loading && !photo) {
+  if (loading) {
     return (
       <div className="py-8">
         <Container>
@@ -124,7 +116,7 @@ export default function PhotoPage() {
     );
   }
 
-  if (error || !photo) {
+  if (error || !photo || (photo && !album)) {
     return (
       <div className="py-8">
         <Container>
@@ -146,17 +138,20 @@ export default function PhotoPage() {
       <Container boxed>
         <PhotoHeader 
           photo={photo} 
+          album={album}
+          isOwner={isOwner}
           onEdit={handleEditTitle}
+          onDelete={handleDeletePhoto}
           isEditing={isEditing}
         />
         
         <div className="mt-6 bg-photo-darkgray/30 p-2 rounded-xl">
           <div className="relative w-full rounded-lg overflow-hidden">
             <Image
-              src={photo.url}
+              src={photo.imageUrl}
               alt={photo.title}
-              width={600}
-              height={600}
+              width={1200}
+              height={800}
               className="w-full h-auto mx-auto"
               priority
             />
@@ -166,15 +161,36 @@ export default function PhotoPage() {
         {isEditing ? (
           <PhotoEditor
             initialTitle={photo.title}
+            initialDescription={photo.description || ''}
+            initialTags={photo.tags || []}
             onSave={handleSaveTitle}
             onCancel={handleCancelEdit}
-            isLoading={loading}
+            isLoading={isActionLoading}
           />
         ) : (
           <div className="mt-6 bg-photo-secondary/5 backdrop-blur-sm border border-photo-secondary/10 rounded-xl p-4">
             <h1 className="text-xl text-photo-secondary">
-              {photo.title.charAt(0).toUpperCase() + photo.title.slice(1)}
+              {photo.title}
             </h1>
+            
+            {photo.description && (
+              <p className="mt-2 text-photo-secondary/70">
+                {photo.description}
+              </p>
+            )}
+            
+            {photo.tags && photo.tags.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {photo.tags.map((tag, index) => (
+                  <span 
+                    key={index}
+                    className="bg-photo-secondary/10 text-photo-secondary/80 px-2 py-1 rounded-full text-sm"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </Container>
