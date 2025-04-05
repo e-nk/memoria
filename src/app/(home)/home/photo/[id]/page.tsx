@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/context/AuthContext';
-import { usePhotos } from '@/hooks/usePhotos';
 import Container from '@/components/layouts/Container';
 import PhotoHeader from '@/components/photo/PhotoHeader';
 import PhotoEditor from '@/components/photo/PhotoEditor';
+import { Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function PhotoPage() {
   const params = useParams();
@@ -20,11 +21,17 @@ export default function PhotoPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [albumIdForRedirect, setAlbumIdForRedirect] = useState<string | null>(null);
 
-  // Fetch photo data using ID string
+  // Get direct mutations for more control
+  const deletePhotoMutation = useMutation(api.photos.deletePhoto);
+  const updatePhotoMutation = useMutation(api.photos.updatePhoto);
+
+  // Fetch photo data
   const photo = useQuery(api.photos.getPhotoById, { photoId });
   
-  // Album depends on photo, use "skip" pattern to maintain hook order
+  // Fetch album data when photo is available
   const albumId = photo?.albumId;
   const album = useQuery(
     api.albums.getAlbumById, 
@@ -34,27 +41,21 @@ export default function PhotoPage() {
   // Determine if the current user is the photo owner
   const isOwner = photo && userId ? photo.userId === userId : false;
   
-  const { updatePhoto, deletePhoto, isLoading: isActionLoading } = usePhotos();
-  
-  // Enable edit mode from URL parameter
+  // Store album ID for redirect as soon as we have it
   useEffect(() => {
-    // Check if the URL contains /edit at the end
-    const isEditMode = params.edit === 'edit';
-    if (isEditMode && isOwner) {
-      setIsEditing(true);
+    if (photo && photo.albumId) {
+      setAlbumIdForRedirect(photo.albumId);
     }
-  }, [params, isOwner]);
+  }, [photo]);
   
   // Update loading state when data is loaded
   useEffect(() => {
     if (photo !== undefined) {
       if (photo && albumId) {
-        // If we have a photo, check if album data is loaded
         if (album !== undefined) {
           setLoading(false);
         }
       } else {
-        // If no photo, we don't need album data
         setLoading(false);
       }
     }
@@ -78,54 +79,51 @@ export default function PhotoPage() {
   };
 
   const handleSaveTitle = async (newTitle: string, newDescription?: string, newTags?: string[]) => {
-    if (!photo || !isOwner) return;
+    if (!photo || !isOwner || !userId) return;
     
-    console.log('Saving photo with:', { newTitle, newDescription, newTags });
-    
-    const success = await updatePhoto({
-      photoId: photo._id,
-      title: newTitle,
-      description: newDescription,
-      tags: newTags,
-    });
-    
-    console.log('Save result:', success);
-    
-    if (success) {
-      setIsEditing(false);
+    try {
+      await updatePhotoMutation({
+        photoId: photo._id,
+        userId,
+        title: newTitle,
+        description: newDescription,
+        tags: newTags,
+      });
       
-      // If we were in edit mode from URL, navigate back to the normal view
-      if (params.edit === 'edit') {
-        router.push(`/home/photo/${photoId}`);
-      }
-    } else {
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating photo:', error);
       alert('Failed to update photo');
     }
   };
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    
-    // If we were in edit mode from URL, navigate back to the normal view
-    if (params.edit === 'edit') {
-      router.push(`/home/photo/${photoId}`);
-    }
   };
   
   const handleDeletePhoto = async () => {
-    if (!photo || !isOwner) return;
-    
-    if (confirm('Are you sure you want to delete this photo? This action cannot be undone.')) {
-      const success = await deletePhoto(photo._id);
-      
-      if (success) {
-        // Navigate back to the album
-        router.push(`/home/album/${photo.albumId}`);
-      } else {
-        alert('Failed to delete photo');
-      }
-    }
-  };
+		if (!photo || !isOwner || !userId) return;
+		
+		if (confirm('Are you sure you want to delete this photo? This action cannot be undone.')) {
+			try {
+				setIsDeleting(true);
+				
+				// Delete the photo
+				await deletePhotoMutation({
+					photoId: photo._id,
+					userId,
+				});
+				
+				// Use window.location for a full page navigation
+				window.location.href = '/home/albums';
+				
+			} catch (error) {
+				console.error('Error deleting photo:', error);
+				setIsDeleting(false);
+				alert('Failed to delete photo');
+			}
+		}
+	};
 
   if (loading) {
     return (
@@ -150,6 +148,30 @@ export default function PhotoPage() {
             <p className="text-photo-secondary/70">
               The requested photo could not be loaded.
             </p>
+            {albumIdForRedirect && (
+              <div className="mt-4">
+                <Link 
+                  href={`/home/album/${albumIdForRedirect}`}
+                  className="px-4 py-2 bg-photo-secondary/10 rounded-lg text-photo-secondary hover:bg-photo-secondary/20 transition-colors"
+                >
+                  Back to Album
+                </Link>
+              </div>
+            )}
+          </div>
+        </Container>
+      </div>
+    );
+  }
+
+  // Show deletion loading state
+  if (isDeleting) {
+    return (
+      <div className="py-8">
+        <Container>
+          <div className="flex flex-col justify-center items-center py-24">
+            <Loader2 className="h-12 w-12 animate-spin text-photo-indigo mb-4" />
+            <p className="text-photo-secondary">Deleting photo and redirecting...</p>
           </div>
         </Container>
       </div>
@@ -188,7 +210,7 @@ export default function PhotoPage() {
             initialTags={photo.tags || []}
             onSave={handleSaveTitle}
             onCancel={handleCancelEdit}
-            isLoading={isActionLoading}
+            isLoading={false}
           />
         ) : (
           <div className="mt-6 bg-photo-secondary/5 backdrop-blur-sm border border-photo-secondary/10 rounded-xl p-4">
