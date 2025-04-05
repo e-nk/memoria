@@ -26,8 +26,8 @@ const AlbumsList = ({ albums }: AlbumsListProps) => {
         
         return (
           <Link 
-            href={`/home/album/${album.id}`} 
-            key={album.id} 
+            href={`/home/album/${album._id}`} 
+            key={album._id} 
             className="group bg-photo-secondary/5 backdrop-blur-sm border border-photo-secondary/10 rounded-xl overflow-hidden hover:bg-photo-secondary/10 transition-all"
           >
             <div 
@@ -42,7 +42,7 @@ const AlbumsList = ({ albums }: AlbumsListProps) => {
                 {album.title.charAt(0).toUpperCase() + album.title.slice(1)}
               </h3>
               <p className="text-photo-secondary/60 text-sm mt-2">
-                Album #{album.id}
+                Album #{album._id}
               </p>
             </div>
           </Link>

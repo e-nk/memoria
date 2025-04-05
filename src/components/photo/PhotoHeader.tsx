@@ -27,7 +27,7 @@ const PhotoHeader = ({ photo, onEdit, isEditing }: PhotoHeaderProps) => {
   return (
     <div>
       <Link 
-        href={photo.album ? `/home/album/${photo.album.id}` : '/home'} 
+        href={photo.album ? `/home/album/${photo.album._id}` : '/home'} 
         className="inline-flex items-center gap-2 text-photo-secondary/70 hover:text-photo-secondary transition-colors mb-6"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -58,7 +58,7 @@ const PhotoHeader = ({ photo, onEdit, isEditing }: PhotoHeaderProps) => {
           <BookOpen className="h-4 w-4" />
           <span>From album: </span>
           <Link 
-            href={`/home/album/${photo.album.id}`}
+            href={`/home/album/${photo.album._id}`}
             className="text-photo-indigo hover:underline"
           >
             {photo.album.title}

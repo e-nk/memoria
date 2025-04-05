@@ -2,82 +2,72 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuth } from '@/context/AuthContext';
 import Container from '@/components/layouts/Container';
 import AlbumHeader from '@/components/album/AlbumHeader';
 import PhotoGrid from '@/components/album/PhotoGrid';
-
-interface UserProps {
-  id: number;
-  name: string;
-  username: string;
-}
-
-interface AlbumProps {
-  userId: number;
-  id: number;
-  title: string;
-  user?: UserProps;
-}
-
-interface PhotoProps {
-  albumId: number;
-  id: number;
-  title: string;
-  url: string;
-  thumbnailUrl: string;
-}
+import PhotoUpload from '@/components/photo/PhotoUpload';
 
 export default function AlbumPage() {
   const params = useParams();
-  const albumId = Number(params.id);
+  const albumId = params.id as string;
+  const { userId, userDetails } = useAuth();
   
-  const [album, setAlbum] = useState<AlbumProps | null>(null);
-  const [photos, setPhotos] = useState<PhotoProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showUploadForm, setShowUploadForm] = useState(false);
 
+  // Always query all data, using "skip" for conditional queries
+  const album = useQuery(api.albums.getAlbumById, { albumId });
+  
+  // Always fetch owner data, but use "skip" when album is undefined
+  const ownerUserId = album?.userId;
+  const albumOwner = useQuery(
+    api.users.getUserById, 
+    ownerUserId ? { userId: ownerUserId } : "skip"
+  );
+  
+  // Always fetch photos
+  const photosData = useQuery(api.photos.getPhotosByAlbum, { albumId, limit: 100 });
+  
+  const photos = photosData?.items || [];
+  
+  // Determine if the current user is the album owner
+  const isOwner = album && userId ? album.userId === userId : false;
+  
+  // Update loading state when data is loaded
   useEffect(() => {
-    const fetchAlbumData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch album
-        const albumResponse = await fetch(`https://jsonplaceholder.typicode.com/albums/${albumId}`);
-        if (!albumResponse.ok) {
-          throw new Error('Album not found');
+    // Don't check albumOwner here since it depends on album
+    if (album !== undefined && photosData !== undefined) {
+      if (album && ownerUserId) {
+        // If we have an album, check if owner data is loaded
+        if (albumOwner !== undefined) {
+          setLoading(false);
         }
-        const albumData = await albumResponse.json();
-        
-        // Fetch user info for this album
-        const userResponse = await fetch(`https://jsonplaceholder.typicode.com/users/${albumData.userId}`);
-        const userData = await userResponse.json();
-        
-        // Fetch album's photos
-        const photosResponse = await fetch(`https://jsonplaceholder.typicode.com/albums/${albumId}/photos`);
-        const photosData = await photosResponse.json();
-        
-        setAlbum({
-          ...albumData,
-          user: {
-            id: userData.id,
-            name: userData.name,
-            username: userData.username
-          }
-        });
-        setPhotos(photosData);
-        setError('');
-      } catch (error) {
-        console.error('Error fetching album data:', error);
-        setError('Failed to load album data. Please try again later.');
-      } finally {
+      } else {
+        // If no album, we don't need owner data
         setLoading(false);
       }
-    };
-
-    if (albumId) {
-      fetchAlbumData();
     }
-  }, [albumId]);
+  }, [album, photosData, albumOwner, ownerUserId]);
+
+  // Handle errors
+  useEffect(() => {
+    if (!loading) {
+      if (!album) {
+        setError('Album not found');
+      } else if (!album.isPublic && !isOwner) {
+        setError('This album is private');
+      }
+    }
+  }, [loading, album, isOwner]);
+
+  // Handle photo upload completion
+  const handleUploadComplete = () => {
+    setShowUploadForm(false);
+  };
 
   if (loading) {
     return (
@@ -91,7 +81,7 @@ export default function AlbumPage() {
     );
   }
 
-  if (error || !album) {
+  if (error || !album || (album && !albumOwner)) {
     return (
       <div className="py-8">
         <Container>
@@ -108,10 +98,35 @@ export default function AlbumPage() {
     );
   }
 
+  // Prepare the album with owner data
+  const albumWithOwner = {
+    ...album,
+    user: {
+      id: albumOwner._id,
+      name: albumOwner.name,
+      username: albumOwner.username
+    }
+  };
+
   return (
     <div className="py-8">
       <Container>
-        <AlbumHeader album={album} photoCount={photos.length} />
+        <AlbumHeader 
+          album={albumWithOwner}
+          photoCount={photos.length}
+          isOwner={isOwner}
+          onAddPhoto={() => setShowUploadForm(true)}
+        />
+        
+        {showUploadForm && isOwner && (
+          <div className="mt-6 mb-8">
+            <PhotoUpload 
+              albumId={albumId}
+              onUploadComplete={handleUploadComplete}
+              onCancel={() => setShowUploadForm(false)}
+            />
+          </div>
+        )}
         
         <div className="mt-10">
           <h2 className="text-xl font-semibold text-photo-secondary mb-6">Photos</h2>
@@ -119,11 +134,23 @@ export default function AlbumPage() {
           {photos.length === 0 ? (
             <div className="bg-photo-secondary/5 backdrop-blur-sm border border-photo-secondary/10 rounded-xl p-8 text-center">
               <p className="text-photo-secondary/70">
-                No photos found in this album
+                {isOwner 
+                  ? "This album doesn't have any photos yet. Add your first photo!"
+                  : "No photos found in this album"
+                }
               </p>
+              
+              {isOwner && !showUploadForm && (
+                <button
+                  onClick={() => setShowUploadForm(true)}
+                  className="mt-4 px-4 py-2 bg-gradient-to-r from-photo-indigo to-photo-violet text-photo-secondary rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  Add Photos
+                </button>
+              )}
             </div>
           ) : (
-            <PhotoGrid photos={photos} />
+            <PhotoGrid photos={photos} isOwner={isOwner} />
           )}
         </div>
       </Container>

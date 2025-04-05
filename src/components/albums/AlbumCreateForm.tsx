@@ -36,20 +36,22 @@ const AlbumCreateForm = ({ onAlbumCreated, onCancel }: AlbumCreateFormProps) => 
     }
     
     try {
-      setIsSubmitting(true);
-      setError('');
-      
-      // Create album in Convex
-      await createAlbum({
-        userId,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        category: category.trim() || undefined,
-        isPublic,
-      });
-      
-      // Notify parent component
-      onAlbumCreated();
+			setIsSubmitting(true);
+			setError('');
+			
+			// Create album in Convex and get the returned ID
+			const albumId = await createAlbum({
+				userId,
+				title: title.trim(),
+				description: description.trim() || undefined,
+				category: category.trim() || undefined,
+				isPublic,
+			});
+			
+			console.log("Created album with ID:", albumId); // Add this to debug
+			
+			// Notify parent component
+			onAlbumCreated();
     } catch (error) {
       console.error('Error creating album:', error);
       setError(error instanceof Error ? error.message : 'Failed to create album');

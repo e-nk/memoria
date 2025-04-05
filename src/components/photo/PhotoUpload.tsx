@@ -8,6 +8,7 @@ import { Upload, X, Image, Loader2 } from 'lucide-react';
 interface PhotoUploadProps {
   albumId: string;
   onUploadComplete: () => void;
+	onCancel: () => void;
 }
 
 const PhotoUpload = ({ albumId, onUploadComplete }: PhotoUploadProps) => {
