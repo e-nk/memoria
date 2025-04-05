@@ -1,100 +1,89 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import Container from '@/components/layouts/Container';
 import ExploreHeader from '@/components/explore/ExploreHeader';
 import ExploreGrid from '@/components/explore/ExploreGrid';
 
-interface PhotoProps {
-  id: number;
-  albumId: number;
-  title: string;
-  url: string;
-  thumbnailUrl: string;
-}
-
 export default function ExplorePage() {
-  const [photos, setPhotos] = useState<PhotoProps[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const limit = 20;
-
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Get explore photos from Convex
+  const explorePhotos = useQuery(api.photos.getExplorePhotos, { limit: 30 });
+  
+  // Get search results if there's a search query
+  const searchResults = useQuery(
+    api.photos.searchPhotos,
+    searchQuery ? { searchQuery, limit: 50 } : "skip"
+  );
+  
+  // Determine which photos to display
+  const displayPhotos = searchQuery ? (searchResults || []) : (explorePhotos || []);
+  
+  // Update loading state when data is loaded
   useEffect(() => {
-    const fetchPhotos = async () => {
-      try {
-        setLoading(true);
-        
-        // Get a random starting point to simulate exploration
-        const start = Math.floor(Math.random() * 4500) + 1;
-        
-        const response = await fetch(`https://jsonplaceholder.typicode.com/photos?_start=${start}&_limit=${limit}`);
-        const data = await response.json();
-        
-        setPhotos(data);
-        setHasMore(data.length === limit);
-      } catch (error) {
-        console.error('Error fetching photos:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPhotos();
-  }, []);
-
-  const loadMore = async () => {
-    try {
-      setLoading(true);
-      
-      const nextPage = page + 1;
-      const start = Math.floor(Math.random() * 4500) + 1;
-      
-      const response = await fetch(`https://jsonplaceholder.typicode.com/photos?_start=${start}&_limit=${limit}`);
-      const data = await response.json();
-      
-      setPhotos(prev => [...prev, ...data]);
-      setPage(nextPage);
-      setHasMore(data.length === limit);
-    } catch (error) {
-      console.error('Error fetching more photos:', error);
-    } finally {
+    if ((searchQuery && searchResults !== undefined) || 
+        (!searchQuery && explorePhotos !== undefined)) {
       setLoading(false);
     }
+  }, [searchQuery, searchResults, explorePhotos]);
+  
+  // Handle search
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setLoading(true);
   };
 
   return (
     <div className="py-8">
       <Container>
-        <ExploreHeader />
+        <ExploreHeader 
+          onSearch={handleSearch} 
+          searchQuery={searchQuery}
+        />
         
         <div className="mt-8">
-          {photos.length === 0 && loading ? (
+          {loading ? (
             <div className="flex justify-center items-center py-24">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-photo-indigo"></div>
             </div>
+          ) : displayPhotos.length === 0 ? (
+            <div className="bg-photo-secondary/5 backdrop-blur-sm border border-photo-secondary/10 rounded-xl p-8 text-center">
+              <p className="text-photo-secondary/70">
+                {searchQuery 
+                  ? `No photos found matching "${searchQuery}"`
+                  : "No photos available for exploration yet"
+                }
+              </p>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="mt-4 px-4 py-2 bg-photo-secondary/10 text-photo-secondary rounded-lg hover:bg-photo-secondary/20 transition-colors"
+                >
+                  Clear Search
+                </button>
+              )}
+            </div>
           ) : (
             <>
-              <ExploreGrid photos={photos} />
+              {searchQuery && (
+                <div className="mb-6">
+                  <p className="text-photo-secondary/70">
+                    Found {displayPhotos.length} results for "{searchQuery}"
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="ml-2 text-photo-indigo hover:underline"
+                    >
+                      Clear
+                    </button>
+                  </p>
+                </div>
+              )}
               
-              <div className="mt-8 flex justify-center">
-                <button
-                  onClick={loadMore}
-                  disabled={loading || !hasMore}
-                  className="px-6 py-3 rounded-lg bg-photo-secondary/5 hover:bg-photo-secondary/10 text-photo-secondary/80 hover:text-photo-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <span className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-photo-indigo"></div>
-                      Loading...
-                    </span>
-                  ) : hasMore ? (
-                    'Load More Photos'
-                  ) : (
-                    'No More Photos'
-                  )}
-                </button>
-              </div>
+              <ExploreGrid photos={displayPhotos} />
             </>
           )}
         </div>
