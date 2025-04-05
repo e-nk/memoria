@@ -1,4 +1,7 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Memoria - Photo Gallery App
+
+A modern, responsive photo gallery application built with Next.js, Convex, and Clerk for authentication. Users can create albums, upload photos, and share with others.
+
 
 ## Getting Started
 
