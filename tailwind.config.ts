@@ -13,16 +13,16 @@ const config: Config = {
         photo: {
           primary: '#030303',      // Main dark background
           secondary: '#ffffff',    // White
-          purple: '#a390f4',       // Purple for logo
+          purple: '#A35C7A',       // Purple for logo
           darkgray: '#1d1d1d',     // Dark gray for UI elements
           
           // Gradient colors
           blue: '#8ba3e8',         // Light blue for gradient
-          pink: '#e8a5c9',         // Pink for gradient
+          pink: '#E53888',         // Pink for gradient
           
           // Accent colors
-          indigo: '#6366f1',       // Indigo accent
-          rose: '#f43f5e',         // Rose accent
+          indigo: '#441752',       // Indigo accent
+          rose: '#EFB6C8',         // Rose accent
           violet: '#8b5cf6',       // Violet accent
           amber: '#f59e0b',        // Amber accent
           cyan: '#06b6d4',         // Cyan accent
