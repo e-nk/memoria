@@ -2,70 +2,53 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import Container from '@/components/layouts/Container';
 import UserHeader from '@/components/user/UserHeader';
 import AlbumsList from '@/components/user/AlbumsList';
 
-interface UserProps {
-  id: number;
-  name: string;
-  username: string;
-  email: string;
-  phone?: string;
-  website?: string;
-  company?: {
-    name: string;
-    catchPhrase?: string;
-    bs?: string;
-  };
-}
-
-interface AlbumProps {
-  userId: number;
-  id: number;
-  title: string;
-}
-
 export default function UserPage() {
   const params = useParams();
-  const userId = Number(params.id);
+  const userId = params.id as string;
   
-  const [user, setUser] = useState<UserProps | null>(null);
-  const [albums, setAlbums] = useState<AlbumProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Fetch user data from Convex
+  const user = useQuery(api.users.getUserById, { userId });
+  
+  // Fetch user's albums from Convex
+  const albumsData = useQuery(
+    api.albums.getAlbumsByUser, 
+    user ? { 
+      userId, 
+      includePrivate: false, // Only show public albums to other users
+      limit: 50 
+    } : "skip"
+  );
+  
+  const albums = albumsData?.page || [];
+  
+  // Update loading state when data is loaded
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch user
-        const userResponse = await fetch(`https://jsonplaceholder.typicode.com/users/${userId}`);
-        if (!userResponse.ok) {
-          throw new Error('User not found');
+    if (user !== undefined) {
+      if (user) {
+        if (albumsData !== undefined) {
+          setLoading(false);
         }
-        const userData = await userResponse.json();
-        
-        // Fetch user's albums
-        const albumsResponse = await fetch(`https://jsonplaceholder.typicode.com/users/${userId}/albums`);
-        const albumsData = await albumsResponse.json();
-        
-        setUser(userData);
-        setAlbums(albumsData);
-        setError('');
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        setError('Failed to load user data. Please try again later.');
-      } finally {
+      } else {
         setLoading(false);
       }
-    };
-
-    if (userId) {
-      fetchUserData();
     }
-  }, [userId]);
+  }, [user, albumsData]);
+
+  // Handle errors
+  useEffect(() => {
+    if (!loading && !user) {
+      setError('User not found');
+    }
+  }, [loading, user]);
 
   if (loading) {
     return (
