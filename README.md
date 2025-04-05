@@ -3,37 +3,108 @@
 A modern, responsive photo gallery application built with Next.js, Convex, and Clerk for authentication. Users can create albums, upload photos, and share with others.
 
 
+## Features
+
+- Secure authentication with Clerk
+- Real-time database with Convex
+- Create public or private albums
+- Upload, edit, and categorize photos
+- Search and explore public photos
+- Tag-based organization
+- Responsive design with Tailwind CSS
+
+## Tech Stack
+
+- <b>Frontend:</b> Next.js, React, Tailwind CSS
+- <b>Backend:</b> Convex for database and file storage
+- <b>Authentication:</b> Clerk
+- <b>State Management:</b> React hooks with Convex client
+- <b>UI Components:</b> Custom components with Tailwind
+
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js (v16+)
+- npm or yarn
+- Clerk account
+- Convex account
+
+### Installation
+
+1. Clone the repository:
+	```bash
+	git clone https://github.com/e-nk/memoria.git
+
+	cd memoria
+	```
+2. Install dependencies:
+	```bash
+	npm install
+	```
+3. Configure environment variables:
+	```bash
+	# Create a .env.local file with your credentials
+	NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_pub_key
+	CLERK_SECRET_KEY=your_clerk_secret_key
+	NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+	NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+	NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/home
+	NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/home
+	CLERK_WEBHOOK_SECRET=your_webhook_secret
+	NEXT_PUBLIC_CONVEX_URL=your_convex_deployment_url
+	```
+4. Initialize Convex:
+	```bash
+	npm convex dev
+	```
+5. Run the development server:
+ 
+		npm run dev
+6. Open http://localhost:3000 in your browser.
+
+## Convex Setup
+
+1. Create a Convex account at convex.dev
+2. Set up a new project and copy your deployment URL
+3. Configure Convex schema and functions from the project files
+
+## Clerk Setup
+
+1. Create a Clerk account at clerk.dev
+2. Set up a new application
+3. Configure OAuth providers (Google, GitHub, etc.) as needed
+4. Add your domain to the allowed origins
+5. Configure webhooks with `/api/webhooks/clerk` as the endpoint
+
+## Project Structure
+
+```bash 
+/app                   # Next.js app router
+  /(home)              # Authenticated routes
+    /home              # Main home page after login
+    /album/[id]        # Album detail page
+    /photo/[id]        # Photo detail page
+    /albums            # User's albums page
+    /explore           # Explore photos page
+/components            # React components
+/convex                # Convex schema and functions
+/hooks                 # Custom React hooks
+/utils                 # Utility functions
+/public                # Static files
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Key Components
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `MainLayout:` Base layout with background effects
+- ``AuthLayout:`` Layout for authenticated pages
+- `AlbumsList:` Displays album grid with photo previews
+- `PhotoGrid:` Displays photos in a responsive grid
+- `PhotoUpload:` Handles photo uploading
+- `PhotoEditor:` Edits photo metadata
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## License
+MIT
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Contributing
+Contributions are welcome! Please feel free to submit a Pull Request.
