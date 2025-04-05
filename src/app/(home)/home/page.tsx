@@ -1,56 +1,32 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuth } from '@/context/AuthContext';
 import Container from '@/components/layouts/Container';
 import HomeHeader from '@/components/home/HomeHeader';
 import UsersList from '@/components/home/UsersList';
 
 export default function HomePage() {
-  const { user, isLoaded } = useUser();
-  const [users, setUsers] = useState([]);
-  const [albums, setAlbums] = useState([]);
+  const { isLoaded, userDetails } = useAuth();
   const [loading, setLoading] = useState(true);
 
+  // Fetch all users from Convex
+  const users = useQuery(api.users.getAllUsers);
+  
+  // Update loading state when data is loaded
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch users
-        const usersResponse = await fetch('https://jsonplaceholder.typicode.com/users');
-        const usersData = await usersResponse.json();
-        
-        // Fetch albums
-        const albumsResponse = await fetch('https://jsonplaceholder.typicode.com/albums');
-        const albumsData = await albumsResponse.json();
-        
-        setUsers(usersData);
-        setAlbums(albumsData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // Count albums per user
-  const getUserAlbumCount = (userId) => {
-    return albums.filter(album => album.userId === userId).length;
-  };
-
-  // Add album count to each user
-  const usersWithAlbumCount = users.map(user => ({
-    ...user,
-    albumCount: getUserAlbumCount(user.id)
-  }));
+    if (isLoaded && users !== undefined) {
+      setLoading(false);
+    }
+  }, [isLoaded, users]);
 
   return (
     <div className="py-8">
       <Container>
         <HomeHeader 
-          userName={isLoaded ? user?.fullName || user?.username : 'User'}
+          userName={userDetails?.name || 'User'}
         />
         
         <div className="mt-8">
@@ -61,7 +37,7 @@ export default function HomePage() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-photo-indigo"></div>
             </div>
           ) : (
-            <UsersList users={usersWithAlbumCount} />
+            <UsersList users={users || []} />
           )}
         </div>
       </Container>
