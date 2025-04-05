@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    domains: ['via.placeholder.com'],
+    domains: ['gregarious-scorpion-162.convex.cloud'],
   },
 };
 

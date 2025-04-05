@@ -45,7 +45,7 @@ export const validateImageFile = (file: File): { valid: boolean; error?: string 
  */
 export function usePhotoUpload() {
   const generateUploadUrl = useMutation(api.photos.generateUploadUrl);
-  const processImage = useMutation(api.photos.processImage);
+  const addPhoto = useMutation(api.photos.addPhoto);
 
   const uploadPhoto = async ({
     file,
@@ -88,13 +88,19 @@ export function usePhotoUpload() {
       // Get the storage ID from the response
       const { storageId } = await result.json();
 
-      // Process the image on the server
-      const { photoId, thumbnailStorageId } = await processImage({
-        storageId,
+      // Create a thumbnail
+      // In a real app, you would resize the image here
+      // For now, just use the same image as both original and thumbnail
+      const thumbnailStorageId = storageId;
+
+      // Add the photo directly (skip the processImage action)
+      const photoId = await addPhoto({
         albumId,
         userId,
         title: title || file.name,
         description,
+        storageId,
+        thumbnailStorageId,
         tags,
       });
 
