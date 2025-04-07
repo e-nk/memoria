@@ -2,6 +2,8 @@
 
 import { useEffect } from "react"
 import { motion, stagger, useAnimate } from "motion/react"
+import { useRouter } from "next/navigation"
+import { useAuth, SignInButton } from "@clerk/nextjs"
 import MainLayout from "@/components/layouts/MainLayout"
 import Floating, { FloatingElement } from "@/components/ui/parallax-floating"
 
@@ -60,10 +62,20 @@ const exampleImages = [
 // Home component with the floating effect
 export default function Home() {
   const [scope, animate] = useAnimate()
+  const { isSignedIn, isLoaded } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
     animate("img", { opacity: [0, 1] }, { duration: 0.5, delay: stagger(0.15) })
-  }, [])
+  }, [animate])
+
+  const handleExploreClick = () => {
+    if (isSignedIn) {
+      // If user is signed in, navigate to explore page
+      router.push('/home/explore')
+    }
+    // If not signed in, the SignInButton will handle showing the modal
+  }
 
   return (
     <MainLayout showHeader={true} showFooter={true} fullHeight={true}>
@@ -85,9 +97,23 @@ export default function Home() {
             <p className="text-photo-secondary/80 text-sm md:text-base max-w-md text-center">
               Capture your memories in stunning detail with our professional photo gallery
             </p>
-            <button className="text-sm hover:scale-105 transition-transform bg-gradient-to-r from-photo-indigo to-photo-violet text-photo-secondary rounded-full py-2 px-6 cursor-pointer mt-2">
-              Explore Now
-            </button>
+            
+            {isLoaded && isSignedIn ? (
+              // Logged in users - direct navigation button
+              <button 
+                onClick={handleExploreClick}
+                className="text-sm hover:scale-105 transition-transform bg-gradient-to-r from-photo-indigo to-photo-violet text-photo-secondary rounded-full py-2 px-6 cursor-pointer mt-2"
+              >
+                Explore Now
+              </button>
+            ) : (
+              // Non-logged in users - show sign in modal
+              <SignInButton mode="modal">
+                <button className="text-sm hover:scale-105 transition-transform bg-gradient-to-r from-photo-indigo to-photo-violet text-photo-secondary rounded-full py-2 px-6 cursor-pointer mt-2">
+                  Explore Now
+                </button>
+              </SignInButton>
+            )}
           </div>
         </motion.div>
 
